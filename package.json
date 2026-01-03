@@ -1,0 +1,13 @@
+{
+  "name": "dashboard-tesoreria-ingenia",
+  "version": "1.0.0",
+  "description": "Dashboard de Tesorería para Ingenia - Dirección de Logística y Finanzas",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "start": "npx serve ."
+  },
+  "keywords": ["dashboard", "tesoreria", "ingenia"],
+  "author": "Ingenia",
+  "license": "MIT"
+}

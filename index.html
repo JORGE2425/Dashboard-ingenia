@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Financiero - Ingenia</title>
+    <meta name="description" content="Dashboard de gestión financiera de Ingenia - Dirección de Logística y Finanzas">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loader">
+            <div class="loader-ring"></div>
+            <div class="loader-text">Cargando Dashboard...</div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-book"></i> Definiciones y Métricas</h3>
+                <button class="modal-close" onclick="closeHelpModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="definition-section">
+                    <h4>📊 KPIs Principales</h4>
+                    <dl>
+                        <dt>Saldo Actual</dt>
+                        <dd>Suma de todos los ingresos menos todos los egresos hasta la fecha. Representa el efectivo
+                            disponible.</dd>
+
+                        <dt>Total Ingresos</dt>
+                        <dd>Suma de todas las entradas de dinero (depósitos, transferencias, fondos recibidos).</dd>
+
+                        <dt>Total Egresos</dt>
+                        <dd>Suma de todas las salidas de dinero (pagos, gastos, compras).</dd>
+
+                        <dt>Variación Mensual</dt>
+                        <dd>Cambio porcentual del saldo respecto al mes anterior. Verde = aumento, Rojo = disminución.
+                        </dd>
+                    </dl>
+                </div>
+
+                <div class="definition-section">
+                    <h4>📈 Ratios Financieros</h4>
+                    <dl>
+                        <dt>Ratio Egreso/Ingreso</dt>
+                        <dd>Egresos ÷ Ingresos × 100. Indica qué porcentaje de los ingresos se gasta. Ideal: <
+                                100%.</dd>
+
+                        <dt>Concentración Top 3</dt>
+                        <dd>Porcentaje del total de ingresos que aportan los 3 proyectos principales.</dd>
+
+                        <dt>Liquidez Proyectada</dt>
+                        <dd>Estimación del saldo futuro basado en la tendencia actual de ingresos/egresos.</dd>
+                    </dl>
+                </div>
+
+                <div class="definition-section">
+                    <h4>🎨 Colores</h4>
+                    <div class="color-legend">
+                        <span class="color-item"><span class="color-dot green"></span> Verde = Ingresos /
+                            Positivo</span>
+                        <span class="color-item"><span class="color-dot red"></span> Rojo = Egresos / Negativo</span>
+                        <span class="color-item"><span class="color-dot blue"></span> Azul = Saldo / Neutro</span>
+                        <span class="color-item"><span class="color-dot orange"></span> Naranja = Alerta /
+                            Atención</span>
+                    </div>
+                </div>
+
+                <div class="definition-section">
+                    <h4>⚠️ Alertas</h4>
+                    <dl>
+                        <dt>Proyecto en Rojo</dt>
+                        <dd>Proyecto cuyos egresos superan los ingresos generados.</dd>
+
+                        <dt>Alerta de Egreso Alto</dt>
+                        <dd>Se activa cuando un egreso individual supera S/.200 o los egresos del mes superan S/.500.
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-container fullscreen">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <div class="logo-container">
+                    <img src="logo-ingenia.png" alt="Ingenia CEDIPRO UNSA" class="logo-img">
+                    <div class="logo-divider"></div>
+                    <img src="logo-logistica.png" alt="Logística & Finanzas" class="logo-img logo-logistica">
+                </div>
+            </div>
+            <div class="header-center">
+                <h2 class="dashboard-title">
+                    <i class="fas fa-chart-area"></i>
+                    Dashboard Flujo de Dinero
+                </h2>
+                <span class="dashboard-subtitle">Control Financiero en Tiempo Real</span>
+            </div>
+            <div class="header-right">
+                <div class="header-actions">
+                    <button id="help-btn" class="btn btn-icon" title="Ayuda y Definiciones" onclick="openHelpModal()">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                    <button id="refresh-btn" class="btn btn-icon" title="Actualizar datos">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button id="export-btn" class="btn btn-primary" title="Exportar PDF">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Exportar PDF</span>
+                    </button>
+                </div>
+                <div class="last-update">
+                    <i class="fas fa-clock"></i>
+                    <span id="last-update-time">Actualizando...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Global Filters -->
+        <section class="filters-section">
+            <div class="filter-group">
+                <label><i class="fas fa-calendar"></i> Año</label>
+                <select id="filter-year" class="filter-select">
+                    <option value="all">Todos</option>
+                    <option value="2025" selected>2025</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label><i class="fas fa-calendar-alt"></i> Mes</label>
+                <select id="filter-month" class="filter-select">
+                    <option value="all">Todos</option>
+                    <option value="01">Enero</option>
+                    <option value="02">Febrero</option>
+                    <option value="03">Marzo</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Mayo</option>
+                    <option value="06">Junio</option>
+                    <option value="07">Julio</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label><i class="fas fa-folder"></i> Proyecto</label>
+                <select id="filter-proyecto" class="filter-select">
+                    <option value="all">Todos los proyectos</option>
+                    <!-- Filled dynamically -->
+                </select>
+            </div>
+            <div class="filter-group">
+                <label><i class="fas fa-user"></i> Responsable</label>
+                <select id="filter-responsable" class="filter-select">
+                    <option value="all">Todos</option>
+                    <!-- Filled dynamically -->
+                </select>
+            </div>
+            <div class="filter-group">
+                <label><i class="fas fa-credit-card"></i> Medio</label>
+                <select id="filter-medio" class="filter-select">
+                    <option value="all">Todos</option>
+                    <option value="Yape">Yape</option>
+                    <option value="BCP/ Transferencia">Transferencia</option>
+                </select>
+            </div>
+            <button id="clear-filters-btn" class="btn btn-clear" title="Limpiar filtros">
+                <i class="fas fa-times"></i> Limpiar
+            </button>
+        </section>
+
+        <!-- Main Content -->
+        <main class="dashboard-main" id="dashboard-content">
+            <!-- Alerts Section -->
+            <section id="alerts-section" class="alerts-section hidden">
+                <div class="alerts-container">
+                    <div class="alerts-header" onclick="toggleAlerts()">
+                        <div class="alerts-title">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span id="alert-count">0 alertas detectadas</span>
+                        </div>
+                        <button class="alerts-toggle" id="alerts-toggle">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="alerts-list hidden" id="alerts-list">
+                        <!-- Filled dynamically -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- KPI Cards Section - Primary -->
+            <section class="kpi-section">
+                <div class="kpi-card saldo" data-tooltip="Saldo = Ingresos acumulados − Egresos acumulados">
+                    <div class="kpi-icon">
+                        <i class="fas fa-piggy-bank"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-label">Saldo Actual</span>
+                        <span class="kpi-period" id="period-saldo">al 26/12/2025</span>
+                        <span class="kpi-value" id="kpi-saldo">S/.0.00</span>
+                        <span class="kpi-trend positive" id="trend-saldo">
+                            <i class="fas fa-arrow-up"></i> +0% vs mes anterior
+                        </span>
+                    </div>
+                </div>
+
+                <div class="kpi-card ingresos" data-tooltip="Suma de todos los depósitos y transferencias recibidas">
+                    <div class="kpi-icon">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-label">Total Ingresos</span>
+                        <span class="kpi-period" id="period-ingresos">Periodo 2025</span>
+                        <span class="kpi-value green" id="kpi-ingresos">S/.0.00</span>
+                        <span class="kpi-subtitle" id="count-ingresos">0 transacciones</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card egresos" data-tooltip="Suma de todos los pagos y gastos realizados">
+                    <div class="kpi-icon">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-label">Total Egresos</span>
+                        <span class="kpi-period" id="period-egresos">Periodo 2025</span>
+                        <span class="kpi-value red" id="kpi-egresos">S/.0.00</span>
+                        <span class="kpi-subtitle" id="count-egresos">0 transacciones</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card transacciones" data-tooltip="Número total de movimientos registrados">
+                    <div class="kpi-icon">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-label">Transacciones</span>
+                        <span class="kpi-period" id="periodo-transacciones">Abr - Dic 2025</span>
+                        <span class="kpi-value" id="kpi-transacciones">0</span>
+                        <span class="kpi-subtitle">movimientos totales</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- KPI Cards Section - Executive -->
+            <section class="kpi-section executive">
+                <div class="kpi-card ratio" data-tooltip="Egresos ÷ Ingresos × 100. Ideal menor a 100%">
+                    <div class="kpi-icon">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-label">Ratio Egreso/Ingreso</span>
+                        <span class="kpi-value" id="kpi-ratio">0%</span>
+                        <div class="kpi-bar">
+                            <div class="kpi-bar-fill" id="ratio-bar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kpi-card variacion" data-tooltip="Cambio del saldo respecto al mes anterior">
+                    <div class="kpi-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-label">Variación Mensual</span>
+                        <span class="kpi-value" id="kpi-variacion">+S/.0.00</span>
+                        <span class="kpi-subtitle" id="variacion-detail">vs mes anterior</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card concentracion" data-tooltip="% del ingreso total que aportan los top 3 proyectos">
+                    <div class="kpi-icon">
+                        <i class="fas fa-bullseye"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-label">Concentración Top 3</span>
+                        <span class="kpi-value" id="kpi-concentracion">0%</span>
+                        <span class="kpi-subtitle" id="top3-projects">de ingresos</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card liquidez" data-tooltip="Saldo promedio mensual proyectado">
+                    <div class="kpi-icon">
+                        <i class="fas fa-water"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <span class="kpi-label">Liquidez Promedio</span>
+                        <span class="kpi-value" id="kpi-liquidez">S/.0.00</span>
+                        <span class="kpi-subtitle">promedio mensual</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section Row 1 -->
+            <section class="charts-section">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-pie"></i> Distribución por Proyecto</h3>
+                        <select id="filter-chart-type" class="filter-select small">
+                            <option value="egresos">Egresos</option>
+                            <option value="ingresos">Ingresos</option>
+                        </select>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-proyectos"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-bar"></i> Top 5 Proyectos (Egresos)</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-top-proyectos"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section - Top Ingresos -->
+            <section class="charts-section">
+                <div class="chart-card wide">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-arrow-trend-up"></i> Proyectos por Ingresos</h3>
+                        <div class="chart-legend-custom">
+                            <span class="legend-item ingreso"><span class="legend-dot"></span> Ingresos
+                                recaudados</span>
+                        </div>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-top-ingresos"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Section - Tendencia -->
+            <section class="charts-section">
+                <div class="chart-card wide">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-line"></i> Tendencia Mensual</h3>
+                        <div class="chart-legend-custom">
+                            <span class="legend-item ingreso"><span class="legend-dot"></span> Ingresos</span>
+                            <span class="legend-item egreso"><span class="legend-dot"></span> Egresos</span>
+                            <span class="legend-item saldo"><span class="legend-dot"></span> Saldo</span>
+                        </div>
+                    </div>
+                    <div class="chart-body tall">
+                        <canvas id="chart-tendencia"></canvas>
+                    </div>
+                    <div class="chart-footer">
+                        <div class="trend-comparison" id="trend-comparison">
+                            <span class="trend-item positive"><i class="fas fa-arrow-up"></i> Ingresos: +0% vs mes
+                                anterior</span>
+                            <span class="trend-item negative"><i class="fas fa-arrow-down"></i> Egresos: +0% vs mes
+                                anterior</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bottom Section -->
+            <section class="bottom-section">
+                <!-- Responsables Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-users"></i> Por Responsable</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-responsables"></canvas>
+                    </div>
+                </div>
+
+                <!-- Transactions Table -->
+                <div class="table-card">
+                    <div class="table-header">
+                        <h3><i class="fas fa-list"></i> Últimas Transacciones</h3>
+                        <div class="table-filters">
+                            <select id="filter-tipo" class="filter-select small">
+                                <option value="todos">Todos</option>
+                                <option value="ingresos">Ingresos</option>
+                                <option value="egresos">Egresos</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-body">
+                        <table id="transactions-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Responsable</th>
+                                    <th>Descripción</th>
+                                    <th>Proyecto</th>
+                                    <th>Monto</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-tbody">
+                                <!-- Filled dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Projects Health Section -->
+            <section class="charts-section">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-heartbeat"></i> Salud de Proyectos</h3>
+                        <span class="chart-subtitle">Balance ingresos vs egresos por proyecto</span>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-project-health"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-credit-card"></i> Por Medio de Pago</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-medios"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="dashboard-footer">
+            <div class="footer-left">
+                <span>© 2025 Ingenia - Dirección de Logística y Finanzas</span>
+            </div>
+            <div class="footer-center">
+                <span class="data-source">
+                    <i class="fas fa-database"></i>
+                    Datos desde Google Sheets
+                </span>
+            </div>
+            <div class="footer-right">
+                <span class="auto-refresh-indicator">
+                    <i class="fas fa-sync"></i>
+                    Auto-actualización cada 5 min
+                </span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Custom Scripts -->
+    <script src="app.js"></script>
+</body>
+
+</html>
